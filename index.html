@@ -455,7 +455,7 @@
 
         function changeVersion(versionKey) {
             if (versionDatabases[versionKey].length === 0) {
-                alert("系統提示：目前儀表板內尚未匯入 04/12 的歷史資料庫喔！\n如果你需要回溯 04/12 的資料，請將當時的 Excel 清單提供給系統，我就能幫你把兩個版本『同時寫入』這個網頁中！");
+                alert("系統提示：目前尚未匯入 04/12 的歷史資料庫喔！\n如果你需要回溯 04/12 的資料，請將當時的 Excel 清單提供給系統，我就能幫你把兩個版本『同時寫入』這個網頁中！");
                 document.getElementById('versionDropdown').value = "0419"; // revert
                 return;
             }
