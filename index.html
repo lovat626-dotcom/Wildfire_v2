@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>夢想特效分析表 - 《野火》</title>
     
-    <!-- ===== 【資源載入區】 ===== -->
-    <!-- 圖表套件 -->
+    <!-- 圖表與 CSV 讀取套件 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-    <!-- CSV 雲端讀取引擎 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
     <!-- ===== 【CSS 視覺設計區】 ===== -->
@@ -75,21 +73,23 @@
     </style>
 </head>
 <body>
-    <div id="loadingOverlay" class="loading-overlay"><div class="spinner"></div><div>正在同步雲端最新數據...</div></div>
+    <!-- 讀取中遮罩 -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div>正在從雲端下載最新數據...</div>
+    </div>
     
-    <!-- ===== 【HTML 結構區】 ===== -->
     <div class="container" id="main-content">
         <header>
             <div class="title-group">
-                <!-- 標題 -->
+                <!-- 標題分兩行 -->
                 <h2>夢想特效分析表</h2>
                 <h1>《野火》</h1>
                 
-                <!-- 版本切換下拉選單 -->
+                <!-- 雙版本切換下拉選單 -->
                 <select id="versionDropdown" class="version-select" onchange="changeVersion(this.value)" style="margin-top: 15px;">
-                    <option value="cloud" selected>🟢 雲端即時同步版</option>
-                    <option value="0419">⚪ V4 (2026-04-19 歷史存檔)</option>
-                    <option value="0412">⚪ V3 (2026-04-12 歷史存檔)</option>
+                    <option value="v4" selected>🟢 V4 (2026-04-19 最新版)</option>
+                    <option value="v3">⚪ V3 (2026-04-12 歷史版本)</option>
                 </select>
             </div>
             
@@ -134,44 +134,55 @@
     <!-- ===== 【JavaScript 核心大腦區】 ===== -->
     <script>
         // -----------------------------------------------------
-        // 【1. 更換網址區】
-        // 請將下方引號內的網址，替換成您最新發佈的 CSV 連結
+        // 【版本網址替換區】
+        // 請將下方引號內的網址，替換成您各版本發佈的 CSV 連結
+        // 如果還沒有 V3 網址，就讓它保持空白 ""
         // -----------------------------------------------------
-        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTBKiIj2OWouSA1oAONox7_t4L6Pjzqzl6QAlGoJFvleVAGQvYiBHqpzS9ZRqZ1vw/pub?gid=447035140&single=true&output=csv";
+        const URL_V4 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTBKiIj2OWouSA1oAONox7_t4L6Pjzqzl6QAlGoJFvleVAGQvYiBHqpzS9ZRqZ1vw/pub?gid=447035140&single=true&output=csv";
+        const URL_V3 = ""; 
         
+
         // -----------------------------------------------------
-        // 【2. 報價標準修改區】
-        // 如果每日單價 ($6,500) 或天數有變更，請在這裡修改
+        // 以下為系統自動運算代碼，無特殊需求不需更動
         // -----------------------------------------------------
         const costMap = { 'S': 65000, '★★★★★': 45500, '★★★★': 32500, '★★★': 19500, '★★': 13000, '★': 6500 };
         const daysMap = { 'S': 10, '★★★★★': 7, '★★★★': 5, '★★★': 3, '★★': 2, '★': 1 };
-
-
-        // =====================================================
-        // 以下為系統自動運算代碼，若無特殊需求請勿更動
-        // =====================================================
         let allShots = [], plansData = {}, currentTabKey = 'heavy';
         Chart.register(ChartDataLabels); let myPieChart = null;
 
         function parseStar(s) { if(!s) return '★'; if(s.includes('S')) return 'S'; if(s.includes('★★★★★')) return '★★★★★'; if(s.includes('★★★★')) return '★★★★'; if(s.includes('★★★')) return '★★★'; if(s.includes('★★')) return '★★'; return '★'; }
         function getLevelLabel(l) { if(!l) return ''; if(l.includes('★')) return l + (l.length >= 3 ? ' (特效鏡頭)' : ' (合成鏡頭)'); return l; }
 
-        async function changeVersion(v) {
-            if(v === 'cloud') {
-                document.getElementById('loadingOverlay').style.display = 'flex';
-                Papa.parse(CSV_URL, { download: true, header: true, complete: r => { processRawData(r.data); document.getElementById('loadingOverlay').style.display = 'none'; }, error: () => { alert("連線失敗！請確認網址是否正確。"); document.getElementById('loadingOverlay').style.display = 'none'; document.getElementById('versionDropdown').value = "0419"; } });
-            } else {
-                if(!versionDatabases[v] || !versionDatabases[v].length) { alert("此歷史版本尚未匯入資料庫。"); document.getElementById('versionDropdown').value = "cloud"; return; }
-                processRawData(versionDatabases[v]);
+        async function changeVersion(versionKey) {
+            let targetURL = (versionKey === 'v4') ? URL_V4 : URL_V3;
+            
+            if (!targetURL) {
+                alert("此版本的網址尚未設定！請在代碼的【版本網址替換區】中填入對應的 CSV 網址。");
+                document.getElementById('versionDropdown').value = (versionKey === 'v4') ? 'v3' : 'v4';
+                return;
             }
+
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            Papa.parse(targetURL, { 
+                download: true, 
+                header: true, 
+                complete: r => { 
+                    processRawData(r.data); 
+                    document.getElementById('loadingOverlay').style.display = 'none'; 
+                }, 
+                error: () => { 
+                    alert("連線失敗！請確認網址是否正確且已『發佈到網路』。"); 
+                    document.getElementById('loadingOverlay').style.display = 'none'; 
+                } 
+            });
         }
 
         function processRawData(d) {
             allShots = d.map(r => ({
-                cat: (r['特效類別']||'').trim(), ep: (r['集數']||'').toString().replace('.0','').trim(), remark: (r['備註']||'').trim(),
-                scene1: (r['大場景']||'').trim(), vfx_content: (r['VFX內容']||'').trim(), time_in_play: (r['劇時間']||'').toString().trim(),
-                content: (r['內容']||'').trim(), count: parseInt((r['鏡頭數量']||'0').toString().replace(/\D/g,'')) || 0,
-                level: (r['鏡頭等級']||'').trim(), star_base: parseStar(r['鏡頭等級'])
+                cat: (r['特效類別']||'').toString().trim(), ep: (r['集數']||'').toString().replace('.0','').trim(), remark: (r['備註']||'').toString().trim(),
+                scene1: (r['大場景']||'').toString().trim(), vfx_content: (r['VFX內容']||'').toString().trim(), time_in_play: (r['劇時間']||'').toString().trim(),
+                content: (r['內容']||'').toString().trim(), count: parseInt((r['鏡頭數量']||'0').toString().replace(/\D/g,'')) || 0,
+                level: (r['鏡頭等級']||'').toString().trim(), star_base: parseStar((r['鏡頭等級']||'').toString())
             })).filter(r => r.cat);
             updateDashboard();
         }
@@ -222,7 +233,7 @@
         function initPieChart() {
             myPieChart = new Chart(document.getElementById('pieChart').getContext('2d'), {
                 type: 'doughnut', data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { color: '#fff', font: { weight: 'bold', size: 14 }, formatter: v => v > 3 ? v + '%' : '' } } }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { color: '#fff', font: { weight: 'bold', size: 14 }, formatter: v => v > 3 ? v + '%' : '' } }, cutout: '55%' }
             });
         }
 
@@ -258,17 +269,9 @@
             });
             document.getElementById('filtered-shots-count').innerText=ts; document.getElementById('filtered-total-cost').innerText='$'+tc.toLocaleString();
         }
-        
-        // -----------------------------------------------------
-        // 【3. 歷史資料庫區 (勿動)】
-        // -----------------------------------------------------
-        const versionDatabases = {
-            "0419": [], // 目前已改由預設抓取雲端，若有靜態資料需求可在此放入陣列
-            "0412": []
-        };
 
-        // 預設載入雲端同步版
-        changeVersion('cloud');
+        // 啟動時預設載入 V4
+        changeVersion('v4');
     </script>
 </body>
 </html>
