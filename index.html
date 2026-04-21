@@ -3,52 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>《野火》特效製作分析 - V23</title>
-    
+    <title>《野火》特效製作分析 -V24</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
     <style>
         :root {
-            --bg-color: #121212; --card-bg: #1e1e1e; --text-color: #e0e0e0;
-            --accent-blue: #3498db; --accent-green: #2ecc71; --accent-red: #e74c3c;
-            --accent-orange: #f39c12; --accent-purple: #9b59b6;
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --accent-blue: #3498db;
+            --accent-green: #2ecc71;
+            --accent-red: #e74c3c;
+            --accent-orange: #f39c12;
+            --accent-purple: #9b59b6;
         }
-        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 20px; scroll-behavior: smooth;}
-        .container { max-width: 1400px; margin: auto; }
-        
-        /* 標題區塊樣式 */
-        header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+        body { 
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            margin: 0; 
+            padding: 20px; 
+            scroll-behavior: smooth;
+        }
+        .container { max-width: 1300px; margin: auto; }
+        header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 1px solid #333; 
+            padding-bottom: 20px; 
+            margin-bottom: 30px;
+        }
         .title-group h2 { font-size: 14px; color: #888; margin: 0; font-weight: normal; letter-spacing: 1px; }
         .title-group h1 { font-size: 32px; color: white; margin: 5px 0 0 0; font-weight: bold; }
-        
-        /* 版本切換下拉選單 */
-        .version-select { background: #2a2a2a; color: var(--accent-green); border: 1px solid #444; padding: 10px 15px; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; outline: none; margin-top: 15px; }
-        
-        /* 分頁切換按鈕 */
-        .tabs { display: flex; gap: 10px; margin-top: 10px; }
-        .tab-btn { padding: 12px 24px; cursor: pointer; background: #2a2a2a; border: 2px solid transparent; color: #aaa; border-radius: 8px; font-weight: bold; transition: 0.3s; font-size: 15px;}
+        .version-select { background: #2a2a2a; color: var(--accent-green); border: 1px solid #444; padding: 8px 12px; border-radius: 5px; font-size: 15px; font-weight: bold; cursor: pointer; outline: none; transition: 0.3s; margin-top:10px;}
+        .version-select:hover { border-color: var(--accent-green); }
+        .tabs { display: flex; gap: 10px; }
+        .tab-btn { 
+            padding: 12px 24px; 
+            cursor: pointer; 
+            background: #2a2a2a; 
+            border: 2px solid transparent; 
+            color: #aaa; 
+            border-radius: 8px; 
+            font-weight: bold;
+            transition: 0.3s;
+            font-size: 15px;
+        }
         .tab-btn.active { color: white; border-color: rgba(255,255,255,0.8); transform: translateY(-3px); }
-        
-        /* KPI 卡片區 */
-        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
-        .kpi-card { background: var(--card-bg); padding: 25px; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .dashboard-view { display: block; }
+        .dashboard-view.hidden { display: none; }
+        .table-view { display: none; }
+        .table-view.active { display: block; }
+        .kpi-grid { 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 20px; 
+            margin-bottom: 30px; 
+        }
+        .kpi-card { 
+            background: var(--card-bg); 
+            padding: 25px; 
+            border-radius: 12px; 
+            text-align: center; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
         .kpi-value { font-size: 32px; font-weight: bold; color: var(--accent-green); display: block; margin: 10px 0;}
         .kpi-label { color: #888; font-size: 14px;}
         .kpi-note { font-size: 12px; color: #aaa; margin-top: 10px; line-height: 1.4; display: block; text-align: left; }
-        
-        /* 表格與篩選器樣式 */
-        .filter-section { background: #2a2a2a; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 15px; }
-        .chk-btn { display: inline-block; padding: 6px 14px; background: #333; border: 1px solid #555; border-radius: 20px; font-size: 13px; cursor: pointer; margin-right: 5px; transition: 0.2s;}
+        .standard-panel { background: rgba(52, 152, 219, 0.1); border: 1px solid rgba(52, 152, 219, 0.3); border-radius: 8px; padding: 15px 20px; margin-bottom: 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .std-badge { background: #333; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; }
+        .std-badge.b5 { border-bottom: 2px solid #e74c3c; } .std-badge.b4 { border-bottom: 2px solid #f39c12; }
+        .std-badge.b3 { border-bottom: 2px solid #3498db; } .std-badge.b2 { border-bottom: 2px solid #2ecc71; }
+        .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .chart-card { background: var(--card-bg); padding: 20px; border-radius: 10px; display: flex; flex-direction: column; }
+        .chart-layout { display: flex; align-items: center; justify-content: space-between; min-height: 250px; }
+        .chart-container-inner { width: 55%; position: relative; }
+        .star-counts-panel { width: 40%; background: #252525; padding: 15px; border-radius: 8px; display: flex; flex-direction: column; gap: 10px; }
+        .star-count-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; padding-bottom: 6px; border-bottom: 1px solid #333; }
+        .bar-wrapper { display: flex; align-items: center; margin-bottom: 12px; }
+        .bar-label { width: 100px; font-size: 14px; }
+        .bar-track { flex-grow: 1; background: #333; height: 16px; border-radius: 8px; overflow: hidden; }
+        .bar-fill { height: 100%; transition: width 0.6s ease-in-out; }
+        .bar-percent { width: 60px; text-align: right; font-size: 14px; font-weight: bold;}
+        .note { background: rgba(243, 156, 18, 0.1); border-left: 4px solid var(--accent-orange); padding: 15px; margin-bottom: 20px; border-radius: 4px; display: none; line-height: 1.5;}
+        .note.active { display: block; }
+        .filter-section { background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 15px; }
+        .filter-row { display: flex; align-items: flex-start; gap: 15px; }
+        .chk-btn { display: inline-block; padding: 6px 12px; background: #333; border: 1px solid #555; border-radius: 20px; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .chk-btn input { display: none; }
         .chk-btn.active { background: var(--accent-blue); border-color: var(--accent-blue); color: white; font-weight: bold; }
-        .table-outer-card { background: var(--card-bg); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        .table-scroll-area { max-height: 600px; overflow-y: auto; }
+        .table-outer-card { background: var(--card-bg); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); overflow: hidden; }
+        .table-scroll-area { max-height: 500px; overflow-y: auto; }
         table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; }
-        th, td { padding: 16px 20px; border-bottom: 1px solid #333; font-size: 14px; }
+        th, td { padding: 14px 20px; border-bottom: 1px solid #333; font-size: 14px; }
         th { background-color: #252525; color: var(--accent-blue); position: sticky; top: 0; z-index: 10; }
-        
-        /* 讀取中遮罩 */
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: #fff; background: #555; display: inline-block;}
+        .badge-5 { background: #e74c3c; } .badge-4 { background: #f39c12; } .badge-3 { background: #3498db; } .badge-2 { background: #2ecc71; }
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: none; justify-content: center; align-items: center; color: white; flex-direction: column; }
         .spinner { border: 5px solid #333; border-top: 5px solid var(--accent-blue); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -65,47 +118,60 @@
             <div class="title-group">
                 <h2>夢想特效分析表</h2>
                 <h1>《野火》</h1>
-                
                 <select id="versionDropdown" class="version-select" onchange="fetchCloudData(this.value)">
-                    <option value="v4" selected>🟢 V4 (0419 最新版)</option>
-                    <option value="v3">⚪ V3 (歷史版本預留)</option>
+                    <option value="v4" selected>🟢 雲端同步版 (最新版)</option>
+                    <option value="v3">⚪ 歷史版本預留區</option>
                 </select>
             </div>
             
             <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab('heavy', this)" style="background:#3498db; color:white;">大幅度減齡方案</button>
+                <button class="tab-btn active" onclick="switchTab('heavy', this)" style="background:#3498db; color:white; border-color:rgba(255,255,255,0.8);">大幅度減齡方案</button>
                 <button class="tab-btn" onclick="switchTab('smooth', this)">2D磨皮減齡方案</button>
                 <button class="tab-btn" onclick="switchTab('actor', this)">演員方案 (移除減齡)</button>
                 <button class="tab-btn" onclick="switchTab('list', this)">完整鏡頭清單</button>
             </div>
         </header>
 
-        <div id="dashboard-view">
+        <div id="dashboard-view" class="dashboard-view">
+            <div id="actor-note" class="note"><strong>💡 演員方案說明：</strong><br>此方案將「減齡特效」完全移除，改由實體化妝或年輕演員替代。總預算大幅下降。</div>
             <div class="kpi-grid">
                 <div class="kpi-card"><span class="kpi-label">總預算 (TWD)</span><span class="kpi-value" id="kpi-budget">$0</span></div>
                 <div class="kpi-card"><span class="kpi-label">總鏡頭數</span><span class="kpi-value" id="kpi-shots" style="color:var(--accent-blue);">0 顆</span></div>
-                <div class="kpi-card">
-                    <span class="kpi-label">預估人天</span>
-                    <span class="kpi-value" id="kpi-days" style="color:var(--accent-purple);">0 天</span>
-                    <span class="kpi-note">＊註：此人天數為依難度折算之基準單位，非實際製作時程。</span>
-                </div>
+                <div class="kpi-card"><span class="kpi-label">預估人天</span><span class="kpi-value" id="kpi-days" style="color:var(--accent-purple);">0 天</span><span class="kpi-note" style="text-align: left;">＊註：此人天數為依鏡頭難度折算之『報價基準單位』，僅供預算規模評估使用，非實際製作之時程。</span></div>
                 <div class="kpi-card"><span class="kpi-label">單顆平均成本</span><span class="kpi-value" id="kpi-avg" style="color:var(--accent-orange);">$0</span></div>
             </div>
-            
+            <div class="standard-panel">
+                <strong style="color:var(--accent-blue); font-size:15px; margin-right:15px;">💡 人天評估標準 (每日 $6,500)</strong>
+                <span class="std-badge b5">S: 10d</span><span class="std-badge b5">5★: 7d</span><span class="std-badge b4">4★: 5d</span><span class="std-badge b3">3★: 3d</span><span class="std-badge b2">2★: 2d</span><span class="std-badge b1" style="background:#95a5a6; border-bottom: 2px solid #95a5a6;">1★: 1d</span>
             </div>
-
-        <div id="table-view" style="display:none;">
-            <div class="filter-section" id="filter-container">
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3 style="margin-top:0; color:#aaa; border-bottom: 1px solid #333; padding-bottom: 10px;">星級費用佔比 (Star Rating)</h3>
+                    <div class="chart-layout">
+                        <div class="chart-container-inner"><canvas id="pieChart"></canvas></div>
+                        <div class="star-counts-panel" id="star-counts-panel"></div>
+                    </div>
                 </div>
+                <div class="chart-card">
+                    <h3 style="margin-top:0; color:#aaa; border-bottom: 1px solid #333; padding-bottom: 10px;">特效類別鏡頭數 (Category)</h3>
+                    <div id="cat-charts"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="table-view" class="table-view">
+            <div class="filter-section" id="filter-section"></div>
             
+            <div style="background: rgba(243, 156, 18, 0.1); border: 1px solid rgba(243, 156, 18, 0.3); padding: 15px; margin-bottom: 15px; border-radius: 8px;">
+                🎯 當前過濾結果：總計 <span style="color:var(--accent-blue); font-weight:bold; font-size: 20px;" id="filtered-shots-count">0</span> 顆，預估總額 <span style="color:var(--accent-orange); font-weight:bold; font-size: 20px;" id="filtered-total-cost">$0</span>
+            </div>
             <div class="table-outer-card">
                 <div class="table-scroll-area">
-                    <table id="shot-table">
+                    <table>
                         <thead>
-                            <tr><th>集數</th><th>類別</th><th>場景</th><th>劇時間</th><th>內容描述</th><th>VFX內容</th><th>數量</th><th>等級</th><th>備註</th></tr>
+                            <tr><th>集數</th><th>類別</th><th>場景</th><th>劇中時間</th><th>內容描述</th><th>VFX內容</th><th>數量</th><th>等級</th><th>備註</th></tr>
                         </thead>
-                        <tbody id="table-body">
-                            </tbody>
+                        <tbody id="table-body"></tbody>
                     </table>
                 </div>
             </div>
@@ -113,19 +179,19 @@
     </div>
 
     <script>
-        // ---【網址與參數配置區】---
-        // 如果你的 Google Sheets 連結有變，改這裡就好
+        // --- 網址管理：你提供的網址，已轉換為 CSV 下載格式 ---
         const URL_V4 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT31rcOANdpsGCUZ-S2_4OcK0v4ebHrRqTwJBlXJPNs7UzdhKJSNwAS4GxF-Y3LWg/pub?output=csv";
         const URL_V3 = ""; 
-
-        // 報價單價與難度對應表
+        
         const costMap = { 'S': 65000, '★★★★★': 45500, '★★★★': 32500, '★★★': 19500, '★★': 13000, '★': 6500 };
         const daysMap = { 'S': 10, '★★★★★': 7, '★★★★': 5, '★★★': 3, '★★': 2, '★': 1 };
+        
+        let allShots = []; 
+        let plansData = {}; 
+        let currentTabKey = 'heavy';
+        Chart.register(ChartDataLabels); let myPieChart = null;
 
-        let allData = []; // 存放從雲端抓下來的原生資料
-        let currentTab = 'heavy';
-
-        // ---【核心功能 1：抓取雲端資料】---
+        // --- 1. 雲端讀取引擎 ---
         function fetchCloudData(version) {
             let url = (version === 'v4') ? URL_V4 : URL_V3;
             if (!url) return alert("尚未設定該版本的網址！");
@@ -134,89 +200,221 @@
 
             Papa.parse(url, {
                 download: true,
-                header: true, // 自動抓取第一列作為標題
+                header: true, // 開啟標頭識別，因為你的 Excel 第一列非常乾淨
                 skipEmptyLines: true,
                 complete: function(results) {
-                    allData = results.data.map(row => ({
-                        // 這裡精準對應你的 Excel 標題
-                        ep: (row['集數'] || '').trim(),
-                        cat: (row['特效類別'] || '').trim(),
-                        scene: (row['大場景'] || '').trim(),
-                        time: (row['劇時間'] || '').trim(),
-                        content: (row['內容'] || '').trim(),
-                        vfx: (row['VFX內容'] || '').trim(),
-                        count: parseInt(row['鏡頭數量']) || 0,
-                        level: (row['鏡頭等級'] || '').trim(),
-                        remark: (row['備註'] || '').trim()
-                    })).filter(item => item.cat !== ""); // 過濾掉沒填類別的空行
-                    
+                    processRawData(results.data);
                     document.getElementById('loadingOverlay').style.display = 'none';
-                    updateUI(); // 抓完資料立刻更新畫面
+                },
+                error: function() {
+                    alert("連線失敗，請確認網址！");
+                    document.getElementById('loadingOverlay').style.display = 'none';
                 }
             });
         }
 
-        // ---【核心功能 2：更新畫面數據】---
-        function updateUI() {
-            // 這裡撰寫計算邏輯 (Plan A, B, C)
-            let totalBudget = 0, totalShots = 0, totalDays = 0;
-            
-            allData.forEach(item => {
-                let star = item.level;
-                // 如果是方案 B (Smooth) 且是減齡類，強制降為 2 星
-                if (currentTab === 'smooth' && item.cat.includes('減齡')) star = '★★';
-                // 如果是方案 C (Actor) 且是減齡類，跳過不計
-                if (currentTab === 'actor' && item.cat.includes('減齡')) return;
+        // --- 2. 資料清洗與對位 ---
+        function processRawData(data) {
+            allShots = [];
+            data.forEach(row => {
+                let cat = (row['特效類別'] || '').toString().trim();
+                if (!cat) return; // 沒有類別的資料跳過
 
-                totalBudget += (item.count * (costMap[star] || 0));
-                totalShots += item.count;
-                totalDays += (item.count * (daysMap[star] || 0));
+                let countStr = (row['鏡頭數量'] || '').toString().replace(/\\D/g, '');
+                let levelStr = (row['鏡頭等級'] || '').toString().trim();
+                
+                let scene1 = (row['大場景'] || '').toString().trim();
+                let scene2 = (row['小場景'] || '').toString().trim();
+                let fullScene = scene1 + (scene2 ? " " + scene2 : "");
+
+                allShots.push({
+                    ep: (row['集數'] || '').toString().replace('.0','').trim(),
+                    cat: cat,
+                    scene: fullScene,
+                    time: (row['劇時間'] || '').toString().trim(),
+                    content: (row['內容'] || '').toString().trim(),
+                    vfx: (row['VFX內容'] || '').toString().trim(),
+                    count: parseInt(countStr) || 0,
+                    level: levelStr,
+                    remark: (row['備註'] || '').toString().trim(),
+                    star_base: parseStar(levelStr)
+                });
             });
-
-            // 更新 KPI 文字
-            document.getElementById('kpi-budget').innerText = '$' + totalBudget.toLocaleString();
-            document.getElementById('kpi-shots').innerText = totalShots + ' 顆';
-            document.getElementById('kpi-days').innerText = totalDays.toLocaleString() + ' 天';
-            document.getElementById('kpi-avg').innerText = '$' + Math.round(totalBudget / (totalShots || 1)).toLocaleString();
-
-            renderTable();
+            updateDashboard();
         }
 
-        // ---【核心功能 3：渲染表格清單】---
-        function renderTable() {
-            const tbody = document.getElementById('table-body');
-            tbody.innerHTML = allData.map(item => `
-                <tr>
-                    <td>${item.ep}</td>
-                    <td>${item.cat}</td>
-                    <td>${item.scene}</td>
-                    <td>${item.time}</td>
-                    <td style="max-width:300px">${item.content}</td>
-                    <td>${item.vfx}</td>
-                    <td>${item.count}</td>
-                    <td>${item.level}</td>
-                    <td>${item.remark}</td>
-                </tr>
-            `).join('');
+        function parseStar(s) { 
+            if(!s) return '★'; 
+            if(s.includes('S')) return 'S'; 
+            if(s.includes('★★★★★')) return '★★★★★'; 
+            if(s.includes('★★★★')) return '★★★★'; 
+            if(s.includes('★★★')) return '★★★'; 
+            if(s.includes('★★')) return '★★'; 
+            return '★'; 
         }
 
-        // ---【介面切換邏輯】---
-        function switchTab(type, btn) {
-            currentTab = type;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+        function getLevelLabel(l) { 
+            if(!l) return ''; 
+            if(l.includes('★')) return l + (l.length >= 3 ? ' (特效鏡頭)' : ' (合成鏡頭)'); 
+            return l; 
+        }
 
-            if (type === 'list') {
-                document.getElementById('dashboard-view').style.display = 'none';
-                document.getElementById('table-view').style.display = 'block';
+        // --- 3. 更新儀表板邏輯 ---
+        function updateDashboard() {
+            plansData = { heavy: simulatePlan('A'), smooth: simulatePlan('B'), actor: simulatePlan('C') };
+            buildTableAndFilters(); // 你要的篩選器自動生成在這裡
+            if(myPieChart) myPieChart.destroy(); 
+            initPieChart();
+            switchTab(currentTabKey, document.querySelector('.tab-btn.active'));
+        }
+
+        function simulatePlan(p) {
+            let ts=0, tc=0, td=0, cats={}, sd={'S':{c:0,v:0},'★★★★★':{c:0,v:0},'★★★★':{c:0,v:0},'★★★':{c:0,v:0},'★★':{c:0,v:0},'★':{c:0,v:0}};
+            
+            allShots.forEach(s => {
+                let st = s.star_base; 
+                if(p==='B' && s.cat.includes('減齡')) st='★★'; 
+                if(p==='C' && s.cat.includes('減齡')) return;
+                
+                ts+=s.count; 
+                tc+=s.count*costMap[st]; 
+                td+=s.count*daysMap[st];
+                cats[s.cat]=(cats[s.cat]||0)+s.count; 
+                sd[st].c+=s.count; 
+                sd[st].v+=s.count*costMap[st];
+            });
+            
+            let pl=[], pd=[], pc=[], sc=[]; 
+            const cm={'S':'#9b59b6','★★★★★':'#e74c3c','★★★★':'#f39c12','★★★':'#3498db','★★':'#2ecc71','★':'#95a5a6'};
+            
+            ['★★★★★','★★★★','★★★','★★','★'].forEach(k => {
+                // 你要的「星級明細列表」資料生成
+                sc.push({l:k+(k.length>=3?' (特效)':' (合成)'), n:sd[k].c, cl:cm[k]});
+                if(sd[k].v>0) { pl.push(k); pd.push(parseFloat((sd[k].v/tc*100).toFixed(1))); pc.push(cm[k]); }
+            });
+            
+            let sorted = Object.keys(cats).map(k=>({label:k, val:cats[k]})).sort((a,b)=>b.val-a.val);
+            if(p==='C') sorted.push({label:'減齡特效', val:0});
+            let mx = Math.max(...sorted.map(i=>i.val), 1); sorted.forEach(c=>c.max=mx);
+            
+            return { budget: "$"+tc.toLocaleString(), shots: ts+" 顆", days: td.toLocaleString(), avg: "$"+Math.round(ts?tc/ts:0).toLocaleString(), pieLabels:pl, pieData:pd, pieColors:pc, starCounts:sc, cats:sorted, note:p==='C' };
+        }
+
+        // --- 4. 生成動態篩選器與表格 ---
+        function buildTableAndFilters() {
+            let eps=new Set(), sts=new Set(), cts=new Set(), rms=new Set(), tb="";
+            
+            allShots.forEach(s => {
+                eps.add(s.ep); sts.add(s.level); cts.add(s.cat); rms.add(s.remark);
+                let bc = s.star_base.includes("5")?"badge-5":s.star_base.includes("4")?"badge-4":s.star_base.includes("3")?"badge-3":s.star_base.includes("2")?"badge-2":"";
+                tb+=`<tr class="shot-row" data-ep="${s.ep}" data-level="${s.level}" data-cat="${s.cat}" data-remark="${s.remark}" data-count="${s.count}">
+                    <td>${s.ep}</td><td>${s.cat}</td><td>${s.scene}</td><td>${s.time}</td><td style="max-width:300px">${s.content}</td><td style="color:white;">${s.vfx}</td><td>${s.count}</td><td><span class="badge ${bc}">${getLevelLabel(s.level)}</span></td><td>${s.remark}</td></tr>`;
+            });
+            document.getElementById('table-body').innerHTML = tb;
+            
+            // 這裡保留你上傳版本的「動態按鈕」邏輯
+            const bf = (id, set, type) => {
+                let arr=Array.from(set).filter(x=>x!=='').sort(); 
+                if(type==='level') arr.reverse();
+                if(type==='ep') arr.sort((a,b)=>parseInt(a.replace(/\\D/g,'')||0)-parseInt(b.replace(/\\D/g,'')||0));
+                
+                let h=`<div class="filter-row"><div style="min-width:100px;font-weight:bold;color:var(--accent-blue);">📺 篩選</div><div style="flex-grow:1;"><label class="chk-btn active"><input type="checkbox" value="all" data-type="${type}" checked onchange="handleCheckbox(this)">全部</label>`;
+                arr.forEach(v=>{h+=`<label class="chk-btn"><input type="checkbox" value="${v}" data-type="${type}" onchange="handleCheckbox(this)">${v}</label>`;});
+                h += `</div></div>`;
+                
+                // 將生成的 HTML 塞入對應的區塊
+                document.getElementById('filter-section').innerHTML += h;
+            };
+            
+            document.getElementById('filter-section').innerHTML = ''; // 清空舊的
+            bf('filter-section', eps, 'ep'); 
+            bf('filter-section', sts, 'level'); 
+            bf('filter-section', cts, 'cat'); 
+            bf('filter-section', rms, 'remark');
+        }
+
+        // --- 5. 圖表初始化 ---
+        function initPieChart() {
+            myPieChart = new Chart(document.getElementById('pieChart').getContext('2d'), {
+                type: 'doughnut', data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { color: '#fff', font: { weight: 'bold', size: 14 }, formatter: v => v > 3 ? v + '%' : '' } }, cutout: '55%' }
+            });
+        }
+
+        // --- 6. 互動操作：切換方案、篩選 ---
+        function switchTab(k, btn) {
+            currentTabKey = k; 
+            document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.style.background='#2a2a2a'; b.style.borderColor='transparent'; });
+            btn.classList.add('active'); 
+            btn.style.background = k==='list'?'#9b59b6':k==='actor'?'#e74c3c':'#3498db'; 
+            btn.style.borderColor='white';
+            
+            const dash=document.getElementById('dashboard-view'), tab=document.getElementById('table-view');
+            if(k==='list') { 
+                dash.style.display='none'; tab.style.display='block'; filterTable(); 
             } else {
-                document.getElementById('dashboard-view').style.display = 'block';
-                document.getElementById('table-view').style.display = 'none';
-                updateUI();
+                dash.style.display='block'; tab.style.display='none'; 
+                const d=plansData[k];
+                
+                document.getElementById('kpi-budget').innerText=d.budget; 
+                document.getElementById('kpi-shots').innerText=d.shots;
+                document.getElementById('kpi-days').innerText=d.days + " 天"; 
+                document.getElementById('kpi-avg').innerText=d.avg;
+                document.getElementById('actor-note').style.display = d.note ? 'block' : 'none';
+                
+                myPieChart.data.labels=d.pieLabels; 
+                myPieChart.data.datasets[0].data=d.pieData; 
+                myPieChart.data.datasets[0].backgroundColor=d.pieColors; 
+                myPieChart.update();
+                
+                // 將你的星級明細表渲染出來
+                document.getElementById('star-counts-panel').innerHTML=d.starCounts.map(c=>`<div class="star-count-item"><span style="color:${c.cl}">${c.l}</span><span style="font-weight:bold;">${c.n} 顆</span></div>`).join('');
+                document.getElementById('cat-charts').innerHTML=d.cats.map(c=>`<div class="bar-wrapper"><div class="bar-label">${c.label}</div><div class="bar-track"><div class="bar-fill" style="width:${c.val/c.max*100}%;background-color:${c.label.includes('減齡')&&c.val===0?'#444':'#3498db'}"></div></div><div class="bar-percent">${c.val} 顆</div></div>`).join('');
             }
         }
 
-        // 頁面開啟時自動執行一次抓取
+        function handleCheckbox(cb) {
+            const t=cb.getAttribute('data-type'), c=cb.parentElement.parentElement;
+            if(cb.value==='all') { 
+                if(cb.checked) { 
+                    c.querySelectorAll('input').forEach(b=>{if(b!==cb){b.checked=false; b.parentElement.classList.remove('active');}}); 
+                    cb.parentElement.classList.add('active'); 
+                } else cb.checked=true; 
+            } else { 
+                if(cb.checked) { 
+                    cb.parentElement.classList.add('active'); 
+                    let a=c.querySelector('input[value="all"]'); 
+                    a.checked=false; a.parentElement.classList.remove('active'); 
+                } else { 
+                    cb.parentElement.classList.remove('active'); 
+                    if(!Array.from(c.querySelectorAll('input')).some(b=>b.checked)){
+                        let a=c.querySelector('input[value="all"]'); a.checked=true; a.parentElement.classList.add('active');
+                    }
+                } 
+            }
+            filterTable();
+        }
+
+        function filterTable() {
+            const get=(t)=>Array.from(document.querySelectorAll(`input[data-type="${t}"]:checked`)).map(i=>i.value);
+            const eps=get('ep'), sts=get('level'), cts=get('cat'), rms=get('remark'); 
+            let ts=0, tc=0;
+            
+            document.querySelectorAll('.shot-row').forEach(r => {
+                const e=r.dataset.ep, s=r.dataset.level, c=r.dataset.cat, m=r.dataset.remark, n=parseInt(r.dataset.count);
+                if((eps.includes('all')||eps.includes(e))&&(sts.includes('all')||sts.includes(s))&&(cts.includes('all')||cts.includes(c))&&(rms.includes('all')||rms.includes(m))) { 
+                    r.style.display = ''; 
+                    ts+=n; 
+                    tc+=n*costMap[parseStar(s)]; 
+                } else {
+                    r.style.display = 'none';
+                }
+            });
+            document.getElementById('filtered-shots-count').innerText=ts; 
+            document.getElementById('filtered-total-cost').innerText='$'+tc.toLocaleString();
+        }
+
+        // 開啟時自動執行！
         fetchCloudData('v4');
     </script>
 </body>
