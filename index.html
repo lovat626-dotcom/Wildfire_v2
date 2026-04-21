@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>《野火》特效製作分析 V25</title>
+  <title>《野火》特效製作分析V26</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
@@ -520,8 +520,8 @@ const COL_MAP = {
   cat:     ['特效類別', '類別', 'category', 'cat'],
   scene1:  ['大場景', '場景', 'scene'],
   scene2:  ['場次', '小場景', 'sub scene', 'subscene'],
-  time:    ['劇時間', '劇中時間', '時間', 'time'],
-  content: ['內容', '內容描述', 'content', 'description'],
+  time:    ['劇中時間', '劇時間', '時間', 'time'],
+  content: ['內容描述', '內容', 'content', 'description'],
   vfx:     ['VFX內容', 'VFX', 'vfx content'],
   count:   ['鏡頭數量', '數量', '顆數', 'count', 'shots'],
   level:   ['鏡頭等級', '等級', '星級', 'level', 'grade'],
@@ -530,20 +530,20 @@ const COL_MAP = {
 
 /**
  * 從一列資料中，依 COL_MAP 的候選名稱清單找到第一個有值的欄位
- * 比對時忽略大小寫、全半形空白、BOM 字符
+ * 比對時忽略大小寫、全半形空白、BOM 字符、換行符號
  */
 function colGet(row, key) {
   const candidates = COL_MAP[key] || [];
-  // 建立標準化的 rowKey → 原始 rowKey 對照表（只建一次效能較差，但資料列少無妨）
-  const normalizedKeys = Object.keys(row).reduce((map, k) => {
-    map[k.trim().replace(/\s+/g, '').toLowerCase()] = k;
-    return map;
-  }, {});
+  const rowKeys = Object.keys(row);
+
+  // 標準化函式：去除空白、BOM、換行、轉小寫
+  const norm = s => s.toString().replace(/[\s\uFEFF\r\n]/g, '').toLowerCase();
 
   for (const c of candidates) {
-    const norm = c.trim().replace(/\s+/g, '').toLowerCase();
-    if (normalizedKeys[norm] !== undefined) {
-      const val = row[normalizedKeys[norm]];
+    const cn = norm(c);
+    const matched = rowKeys.find(k => norm(k) === cn);
+    if (matched !== undefined) {
+      const val = row[matched];
       if (val !== undefined && val !== null && val.toString().trim() !== '') {
         return val.toString().trim();
       }
@@ -586,10 +586,14 @@ function showInspector(rows) {
     </div>`;
   }).join('');
 
-  // 顯示第一筆 raw 資料
+  // 顯示第一筆 raw 資料（含 index）
   if (rows[1]) {
     document.getElementById('col-raw-row').style.display = '';
-    document.getElementById('col-raw').textContent = JSON.stringify(rows[1], null, 2);
+    const indexed = {};
+    Object.entries(rows[1]).forEach(([k, v], i) => {
+      indexed[`[${i}] "${k}"`] = v;
+    });
+    document.getElementById('col-raw').textContent = JSON.stringify(indexed, null, 2);
   }
 
   document.getElementById('col-inspector').style.display = '';
