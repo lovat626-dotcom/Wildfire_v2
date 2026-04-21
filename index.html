@@ -8,6 +8,7 @@
     <!-- ===== 1. 資源載入區 ===== -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <!-- 使用 PapaParse 來解析 CSV 網址 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
     <!-- ===== 2. CSS 視覺設計區 ===== -->
@@ -65,7 +66,7 @@
         <header>
             <div class="title-group">
                 <!-- 標題分兩行 -->
-                <h2>夢想特效分析表04211245</h2>
+                <h2>夢想特效分析表</h2>
                 <h1>《野火》</h1>
                 
                 <!-- 雙版本切換下拉選單 -->
@@ -84,6 +85,7 @@
             </div>
         </header>
 
+        <!-- KPI 數據概覽區 -->
         <div id="dashboard-view">
             <div id="actor-note" style="display:none; background: rgba(243, 156, 18, 0.1); border-left: 4px solid var(--accent-orange); padding: 15px; margin-bottom: 20px; border-radius: 4px; line-height: 1.5;">
                 <strong>💡 演員方案說明：</strong> 此方案將「減齡特效」完全移除，改由實體化妝或年輕演員替代。預算大幅下降。
@@ -121,15 +123,21 @@
             </div>
         </div>
 
+        <!-- 鏡頭明細清單區 -->
         <div id="table-view" style="display:none;">
-            <div class="filter-section" id="filter-section"></div>
+            <div class="filter-section" id="filter-section">
+                <!-- 動態注入篩選器 -->
+            </div>
+            
             <div style="background: rgba(243, 156, 18, 0.1); border: 1px solid rgba(243, 156, 18, 0.3); padding: 15px; margin-bottom: 15px; border-radius: 8px;">
                 🎯 當前過濾結果：總計 <span style="color:var(--accent-blue); font-weight:bold; font-size: 20px;" id="filtered-count">0</span> 顆，預估總額 <span style="color:var(--accent-orange); font-weight:bold; font-size: 20px;" id="filtered-cost">$0</span>
             </div>
+            
             <div class="table-outer-card">
                 <div class="table-scroll-area">
                     <table id="shotTable">
                         <thead>
+                            <!-- 完全拔除「場次」欄位，共 9 欄 -->
                             <tr><th>集數</th><th>類別</th><th>場景</th><th>劇時間</th><th>內容</th><th>VFX內容</th><th>數量</th><th>等級</th><th>備註</th></tr>
                         </thead>
                         <tbody id="table-body"></tbody>
@@ -139,82 +147,60 @@
         </div>
     </div>
 
-    <!-- ===== 4. JavaScript 核心大腦區 ===== -->
+    <!-- ===== 4. JavaScript 核心大腦區 (管邏輯與資料) ===== -->
     <script>
         // -----------------------------------------------------
         // 【網址管理區】
+        // 只要更換下方引號內的網址，報表就會連動更新
         // -----------------------------------------------------
-        const URL_V4 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT31rcOANdpsGCUZ-S2_4OcK0v4ebHrRqTwJBlXJPNs7UzdhKJSNwAS4GxF-Y3LWg/pub?output=csv";
-        const URL_V3 = ""; 
+        const URL_V4 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTBKiIj2OWouSA1oAONox7_t4L6Pjzqzl6QAlGoJFvleVAGQvYiBHqpzS9ZRqZ1vw/pub?gid=447035140&single=true&output=csv";
+        const URL_V3 = ""; // 0412 網址預留處
         
+        // -----------------------------------------------------
+        // 【計價標準設定區】
+        // -----------------------------------------------------
         const costMap = { 'S': 65000, '★★★★★': 45500, '★★★★': 32500, '★★★': 19500, '★★': 13000, '★': 6500 };
         const daysMap = { 'S': 10, '★★★★★': 7, '★★★★': 5, '★★★': 3, '★★': 2, '★': 1 };
+        
+        // =====================================================
+        // 核心邏輯代碼 (無特殊需求不需修改)
+        // =====================================================
         let allShots = [], plansData = {}, currentTabKey = 'heavy';
         Chart.register(ChartDataLabels); let myPieChart = null;
 
-        // 版本切換
+        // 版本切換：強制開啟標頭解析模式
         async function changeVersion(versionKey) {
             let targetURL = (versionKey === 'v4') ? URL_V4 : URL_V3;
             if (!targetURL) { alert("此版本的網址尚未填入！"); document.getElementById('versionDropdown').value = 'v4'; return; }
 
             document.getElementById('loadingOverlay').style.display = 'flex';
-            
-            // 🚨 強制使用 header: false，因為 Excel 前面可能有大標題或合併儲存格
             Papa.parse(targetURL, { 
                 download: true, 
-                header: false, 
+                header: true, // 重要：強制抓取第一列作為標題名稱
                 skipEmptyLines: true,
                 complete: r => { 
-                    processRawDataAbsolute(r.data); 
+                    processRawData(r.data); 
                     document.getElementById('loadingOverlay').style.display = 'none'; 
                 }, 
-                error: () => { alert("連線失敗！"); document.getElementById('loadingOverlay').style.display = 'none'; } 
+                error: () => { alert("連線失敗！請檢查 Excel 是否發佈到網路。"); document.getElementById('loadingOverlay').style.display = 'none'; } 
             });
         }
 
-        // 🚨 終極防彈版邏輯 (V19): 物理性鎖定欄位位置 🚨
-        function processRawDataAbsolute(data) {
-            allShots = [];
-            
-            // 迴圈掃描每一列
-            for (let i = 0; i < data.length; i++) {
-                let row = data[i];
-                if (!row || row.length < 5) continue; // 跳過空白或欄位太少的無效行
-                
-                // 根據您提供的 Excel 截圖，這裡使用「絕對位置」來抓資料
-                // 如果 Excel 欄位順序改變，這裡需要調整數字 (0 是第一欄)
-                let ep = (row[0] || '').toString().trim();      // 第 1 欄：集數 (本來可能是場次的地方)
-                let cat = (row[1] || '').toString().trim();     // 第 2 欄：特效類別
-                let scene = (row[2] || '').toString().trim();   // 第 3 欄：大場景
-                let time = (row[3] || '').toString().trim();    // 第 4 欄：劇時間
-                let content = (row[4] || '').toString().trim(); // 第 5 欄：內容
-                let vfx = (row[5] || '').toString().trim();     // 第 6 欄：VFX內容
-                let countStr = (row[6] || '').toString().trim();// 第 7 欄：鏡頭數量
-                let level = (row[7] || '').toString().trim();   // 第 8 欄：鏡頭等級
-                let remark = (row[8] || '').toString().trim();  // 第 9 欄：備註
-
-                // 過濾掉真正的標題列 (例如文字就是寫著"集數"的那一行) 或空資料
-                if (!cat || cat === '特效類別' || cat === '類別' || cat.includes('breakdown')) {
-                    continue; 
-                }
-
-                // 清洗數字與等級
-                let countNum = parseInt(countStr.replace(/\D/g, '')) || 0;
-                let cleanEp = ep.replace('.0', '');
-
-                allShots.push({
-                    ep: cleanEp,
-                    cat: cat,
-                    scene: scene,
-                    time: time,
-                    content: content,
-                    vfx: vfx,
-                    count: countNum,
-                    level: level,
-                    remark: remark,
-                    star_base: parseStar(level)
-                });
-            }
+        // 資料欄位對位處理：根據 Excel 標題名稱精準映射
+        function processRawData(data) {
+            allShots = data.map(r => ({
+                // 🚨 這裡使用中括號直接對應您截圖中的真實欄位名稱
+                ep: (r['集數'] || '').toString().replace('.0','').trim(),
+                cat: (r['特效類別'] || '').toString().trim(),
+                scene: (r['大場景'] || '').toString().trim(),
+                time: (r['劇時間'] || '').toString().trim(),
+                content: (r['內容'] || '').toString().trim(),
+                vfx: (r['VFX內容'] || '').toString().trim(),
+                count: parseInt((r['鏡頭數量'] || '0').toString().replace(/\D/g,'')) || 0,
+                level: (r['鏡頭等級'] || '').toString().trim(),
+                remark: (r['備註'] || '').toString().trim(),
+                star_base: parseStar((r['鏡頭等級'] || '').toString())
+            })).filter(r => r.cat && r.cat !== '特效類別' && r.cat !== '類別'); // 只抓取有類別的資料列，過濾掉可能是標題行的重複資料
             
             updateUI();
         }
@@ -229,6 +215,7 @@
             switchTab(currentTabKey, document.querySelector('.tab-btn.active'));
         }
 
+        // 方案計算引擎
         function simulatePlan(p) {
             let ts=0, tc=0, td=0, cats={}, sd={'S':{c:0,v:0},'★★★★★':{c:0,v:0},'★★★★':{c:0,v:0},'★★★':{c:0,v:0},'★★':{c:0,v:0},'★':{c:0,v:0}};
             allShots.forEach(s => {
