@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>《野火》特效製作分析 04211730</title>
+  <title>《野火》特效製作分析 V24</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
@@ -323,6 +323,28 @@
     <strong>操作步驟：</strong>檔案 → 分享 → 發布到網路 → 選擇工作表 → CSV → 發布
   </div>
 
+  <!-- ── 欄位偵測器（開發用，上線後可刪） ── -->
+  <div id="col-inspector" style="display:none; background:#12161f; border:1px solid rgba(167,139,250,0.35); border-radius:10px; padding:18px 20px; margin-bottom:20px; font-size:13px; line-height:1.8;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <strong style="color:#a78bfa; font-size:14px;">🔬 CSV 欄位偵測結果</strong>
+      <button onclick="document.getElementById('col-inspector').style.display='none'"
+        style="background:#2a2a3a; border:1px solid #444; color:#aaa; padding:4px 10px; border-radius:6px; cursor:pointer; font-size:12px;">關閉</button>
+    </div>
+    <div style="margin-bottom:12px; color:#6b7294;">
+      以下是 Google Sheet CSV 實際回傳的 <strong style="color:#fff" id="col-count">0</strong> 個欄位名稱，
+      對照下方「程式碼對應」確認是否正確：
+    </div>
+    <div id="col-tags" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;"></div>
+    <div style="border-top:1px solid rgba(255,255,255,0.08); padding-top:14px;">
+      <div style="color:#6b7294; margin-bottom:8px; font-size:12px;">📌 程式碼目前對應的欄位名稱：</div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr)); gap:6px;" id="mapping-list"></div>
+    </div>
+    <div id="col-raw-row" style="margin-top:14px; border-top:1px solid rgba(255,255,255,0.08); padding-top:14px; display:none;">
+      <div style="color:#6b7294; margin-bottom:8px; font-size:12px;">📄 第一筆資料列（raw）：</div>
+      <pre id="col-raw" style="color:#2fe0a0; font-size:11px; white-space:pre-wrap; overflow-x:auto; background:#0a0c14; padding:10px; border-radius:6px;"></pre>
+    </div>
+  </div>
+
   <!-- ── 儀表板 ── -->
   <div id="dashboard-view">
     <div id="actor-note" class="actor-note">
@@ -490,39 +512,123 @@ function fetchData(version) {
 }
 
 /* ══════════════════════════════════════════
-   2. 資料清洗
-   欄位名稱對照：請根據實際 Google Sheet 的標頭調整
+   2-A. 欄位對應設定
+   若 Google Sheet 標頭名稱不同，在此修改即可
+══════════════════════════════════════════ */
+const COL_MAP = {
+  ep:      ['集數', 'ep', 'episode'],
+  cat:     ['特效類別', '類別', 'category', 'cat'],
+  scene1:  ['大場景', '場景', 'scene'],
+  scene2:  ['小場景', 'sub scene', 'subscene'],
+  time:    ['劇時間', '劇中時間', '時間', 'time'],
+  content: ['內容', '內容描述', 'content', 'description'],
+  vfx:     ['VFX內容', 'VFX', 'vfx content'],
+  count:   ['鏡頭數量', '數量', '顆數', 'count', 'shots'],
+  level:   ['鏡頭等級', '等級', '星級', 'level', 'grade'],
+  remark:  ['備註', 'remark', 'note', 'notes']
+};
+
+/**
+ * 從一列資料中，依 COL_MAP 的候選名稱清單找到第一個有值的欄位
+ * 比對時忽略大小寫、全半形空白、BOM 字符
+ */
+function colGet(row, key) {
+  const candidates = COL_MAP[key] || [];
+  // 建立標準化的 rowKey → 原始 rowKey 對照表（只建一次效能較差，但資料列少無妨）
+  const normalizedKeys = Object.keys(row).reduce((map, k) => {
+    map[k.trim().replace(/\s+/g, '').toLowerCase()] = k;
+    return map;
+  }, {});
+
+  for (const c of candidates) {
+    const norm = c.trim().replace(/\s+/g, '').toLowerCase();
+    if (normalizedKeys[norm] !== undefined) {
+      const val = row[normalizedKeys[norm]];
+      if (val !== undefined && val !== null && val.toString().trim() !== '') {
+        return val.toString().trim();
+      }
+    }
+  }
+  return '';
+}
+
+/* ══════════════════════════════════════════
+   2-B. 欄位偵測器顯示
+══════════════════════════════════════════ */
+function showInspector(rows) {
+  if (!rows || rows.length === 0) return;
+
+  const allKeys = Object.keys(rows[0]);
+  document.getElementById('col-count').textContent = allKeys.length;
+
+  // 顯示所有欄位 tag
+  document.getElementById('col-tags').innerHTML = allKeys.map(k => {
+    const empty = !rows.slice(0, 5).some(r => r[k] && r[k].toString().trim());
+    return `<span style="
+      padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600;
+      background:${empty ? '#2a2a3a' : 'rgba(79,142,247,0.15)'};
+      border:1px solid ${empty ? '#444' : 'rgba(79,142,247,0.4)'};
+      color:${empty ? '#666' : '#4f8ef7'};
+    " title="空值欄位">${esc(k)}${empty ? ' ⚠️' : ''}</span>`;
+  }).join('');
+
+  // 顯示程式碼對應清單
+  document.getElementById('mapping-list').innerHTML = Object.entries(COL_MAP).map(([field, candidates]) => {
+    const found = candidates.find(c => {
+      const norm = c.trim().replace(/\s+/g, '').toLowerCase();
+      return allKeys.some(k => k.trim().replace(/\s+/g, '').toLowerCase() === norm);
+    });
+    return `<div style="font-size:12px; padding:5px 10px; background:#0f1117; border-radius:6px; border:1px solid ${found ? 'rgba(47,224,160,0.3)' : 'rgba(242,95,92,0.3)'}">
+      <span style="color:${found ? '#2fe0a0' : '#f25f5c'}">${found ? '✓' : '✗'}</span>
+      <span style="color:#aaa"> ${field}</span>
+      <span style="color:#555"> → </span>
+      <span style="color:${found ? '#fff' : '#f25f5c'}">${found || '❌ 找不到對應欄位'}</span>
+    </div>`;
+  }).join('');
+
+  // 顯示第一筆 raw 資料
+  if (rows[1]) {
+    document.getElementById('col-raw-row').style.display = '';
+    document.getElementById('col-raw').textContent = JSON.stringify(rows[1], null, 2);
+  }
+
+  document.getElementById('col-inspector').style.display = '';
+}
+
+/* ══════════════════════════════════════════
+   2-C. 資料清洗主函式
 ══════════════════════════════════════════ */
 function processData(rows) {
   allShots = [];
 
-  rows.forEach(row => {
-    // 取欄位值（.trim() 避免空白問題，|| '' 避免 undefined）
-    const cat   = (row['特效類別']  || row['類別']   || '').trim();
-    if (!cat) return;   // 沒有類別代表空白行，跳過
+  // 顯示偵測器（開發時用，確認欄位後可在 showInspector 呼叫處刪除）
+  showInspector(rows);
 
-    const ep      = (row['集數']     || '').toString().replace(/\.0$/, '').trim();
-    const scene1  = (row['大場景']   || '').trim();
-    const scene2  = (row['小場景']   || '').trim();
-    const scene   = [scene1, scene2].filter(Boolean).join(' ');
-    const time    = (row['劇時間']   || row['劇中時間'] || '').trim();
-    const content = (row['內容']     || '').trim();
-    const vfx     = (row['VFX內容'] || '').trim();
-    const remark  = (row['備註']     || '').trim();
-    const levelRaw = (row['鏡頭等級'] || row['等級'] || '').trim();
-    // 修正：移除非數字時用正確的正則
-    const count   = parseInt((row['鏡頭數量'] || row['數量'] || '1').toString().replace(/\D/g, '')) || 1;
+  rows.forEach(row => {
+    const cat = colGet(row, 'cat');
+    if (!cat) return;  // 空白列跳過
+
+    const ep       = colGet(row, 'ep').replace(/\.0$/, '');
+    const scene1   = colGet(row, 'scene1');
+    const scene2   = colGet(row, 'scene2');
+    const scene    = [scene1, scene2].filter(Boolean).join(' ');
+    const time     = colGet(row, 'time');
+    const content  = colGet(row, 'content');
+    const vfx      = colGet(row, 'vfx');
+    const remark   = colGet(row, 'remark');
+    const levelRaw = colGet(row, 'level');
+    const count    = parseInt(colGet(row, 'count').replace(/\D/g, '')) || 1;
 
     allShots.push({
       ep, cat, scene, time, content, vfx, remark,
       levelRaw,
-      star: parseStar(levelRaw),  // 解析後的鍵值
+      star: parseStar(levelRaw),
       count
     });
   });
 
   if (allShots.length === 0) {
-    showError('資料成功載入但沒有有效鏡頭，請確認 Google Sheet 欄位名稱是否符合預期。');
+    showError('資料成功載入但沒有有效鏡頭。請看上方「欄位偵測結果」，確認 ✗ 標示的欄位名稱，並更新 COL_MAP。');
     return;
   }
 
