@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>夢想特效分析表 - 《野火》</title>
     
+    <!-- ===== 1. 資源載入區 ===== -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
+    <!-- ===== 2. CSS 視覺設計區 ===== -->
     <style>
         :root {
             --bg-color: #121212; --card-bg: #1e1e1e; --text-color: #e0e0e0;
@@ -59,15 +61,21 @@
     <div id="loadingOverlay" class="loading-overlay"><div class="spinner"></div><div>正在同步雲端最新數據...</div></div>
     
     <div class="container" id="main-content">
+        <!-- ===== 3. HTML 結構區 ===== -->
         <header>
             <div class="title-group">
-                <h2>夢想特效分析表04211238</h2>
+                <!-- 標題分兩行 -->
+                <h2>夢想特效分析表04211245</h2>
                 <h1>《野火》</h1>
+                
+                <!-- 雙版本切換下拉選單 -->
                 <select id="versionDropdown" class="version-select" onchange="changeVersion(this.value)">
                     <option value="v4" selected>🟢 V4 (2026-04-19 最新版)</option>
                     <option value="v3">⚪ V3 (2026-04-12 歷史版本)</option>
                 </select>
             </div>
+            
+            <!-- 功能分頁切換 -->
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchTab('heavy', this)" style="background:#3498db; color:white;">大幅度減齡方案</button>
                 <button class="tab-btn" onclick="switchTab('smooth', this)">2D磨皮減齡方案</button>
@@ -80,6 +88,7 @@
             <div id="actor-note" style="display:none; background: rgba(243, 156, 18, 0.1); border-left: 4px solid var(--accent-orange); padding: 15px; margin-bottom: 20px; border-radius: 4px; line-height: 1.5;">
                 <strong>💡 演員方案說明：</strong> 此方案將「減齡特效」完全移除，改由實體化妝或年輕演員替代。預算大幅下降。
             </div>
+            
             <div class="kpi-grid">
                 <div class="kpi-card"><span class="kpi-label">總預算 (TWD)</span><span class="kpi-value" id="kpi-budget">$0</span></div>
                 <div class="kpi-card"><span class="kpi-label">總鏡頭數</span><span class="kpi-value" id="kpi-shots" style="color:var(--accent-blue);">0 顆</span></div>
@@ -91,6 +100,7 @@
                 <div class="kpi-card"><span class="kpi-label">單顆平均成本</span><span class="kpi-value" id="kpi-avg" style="color:var(--accent-orange);">$0</span></div>
             </div>
 
+            <!-- 評估標準 -->
             <div style="background: rgba(52, 152, 219, 0.1); border: 1px solid rgba(52, 152, 219, 0.3); border-radius: 8px; padding: 15px 20px; margin-bottom: 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                 <strong style="color:var(--accent-blue); font-size:15px; margin-right:15px;">💡 人天評估標準 (每日 $6,500)</strong>
                 <span class="badge badge-5">S: 10d</span> <span class="badge badge-5">5★: 7d</span> <span class="badge badge-4">4★: 5d</span> <span class="badge badge-3">3★: 3d</span> <span class="badge badge-2">2★: 2d</span> <span class="badge" style="background:#95a5a6;">1★: 1d</span>
@@ -129,8 +139,12 @@
         </div>
     </div>
 
+    <!-- ===== 4. JavaScript 核心大腦區 ===== -->
     <script>
-        const URL_V4 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTBKiIj2OWouSA1oAONox7_t4L6Pjzqzl6QAlGoJFvleVAGQvYiBHqpzS9ZRqZ1vw/pub?gid=447035140&single=true&output=csv";
+        // -----------------------------------------------------
+        // 【網址管理區】
+        // -----------------------------------------------------
+        const URL_V4 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT31rcOANdpsGCUZ-S2_4OcK0v4ebHrRqTwJBlXJPNs7UzdhKJSNwAS4GxF-Y3LWg/pub?output=csv";
         const URL_V3 = ""; 
         
         const costMap = { 'S': 65000, '★★★★★': 45500, '★★★★': 32500, '★★★': 19500, '★★': 13000, '★': 6500 };
@@ -138,47 +152,70 @@
         let allShots = [], plansData = {}, currentTabKey = 'heavy';
         Chart.register(ChartDataLabels); let myPieChart = null;
 
+        // 版本切換
         async function changeVersion(versionKey) {
             let targetURL = (versionKey === 'v4') ? URL_V4 : URL_V3;
             if (!targetURL) { alert("此版本的網址尚未填入！"); document.getElementById('versionDropdown').value = 'v4'; return; }
 
             document.getElementById('loadingOverlay').style.display = 'flex';
+            
+            // 🚨 強制使用 header: false，因為 Excel 前面可能有大標題或合併儲存格
             Papa.parse(targetURL, { 
                 download: true, 
-                header: true, // 🚨 CRITICAL: Use header true
+                header: false, 
                 skipEmptyLines: true,
                 complete: r => { 
-                    processRawDataReal(r.data); 
+                    processRawDataAbsolute(r.data); 
                     document.getElementById('loadingOverlay').style.display = 'none'; 
                 }, 
                 error: () => { alert("連線失敗！"); document.getElementById('loadingOverlay').style.display = 'none'; } 
             });
         }
 
-        // 🚨 CRITICAL FIX: EXACT mapping based on screenshot
-        function processRawDataReal(data) {
+        // 🚨 終極防彈版邏輯 (V19): 物理性鎖定欄位位置 🚨
+        function processRawDataAbsolute(data) {
             allShots = [];
-            data.forEach(r => {
-                let cat = (r['特效類別'] || '').toString().trim();
-                if(!cat) return;
-
-                let countStr = (r['鏡頭數量'] || '').toString().replace(/\D/g, '');
-                let level = (r['鏡頭等級'] || '').toString().trim();
+            
+            // 迴圈掃描每一列
+            for (let i = 0; i < data.length; i++) {
+                let row = data[i];
+                if (!row || row.length < 5) continue; // 跳過空白或欄位太少的無效行
                 
-                // FORCE reading ONLY these keys
+                // 根據您提供的 Excel 截圖，這裡使用「絕對位置」來抓資料
+                // 如果 Excel 欄位順序改變，這裡需要調整數字 (0 是第一欄)
+                let ep = (row[0] || '').toString().trim();      // 第 1 欄：集數 (本來可能是場次的地方)
+                let cat = (row[1] || '').toString().trim();     // 第 2 欄：特效類別
+                let scene = (row[2] || '').toString().trim();   // 第 3 欄：大場景
+                let time = (row[3] || '').toString().trim();    // 第 4 欄：劇時間
+                let content = (row[4] || '').toString().trim(); // 第 5 欄：內容
+                let vfx = (row[5] || '').toString().trim();     // 第 6 欄：VFX內容
+                let countStr = (row[6] || '').toString().trim();// 第 7 欄：鏡頭數量
+                let level = (row[7] || '').toString().trim();   // 第 8 欄：鏡頭等級
+                let remark = (row[8] || '').toString().trim();  // 第 9 欄：備註
+
+                // 過濾掉真正的標題列 (例如文字就是寫著"集數"的那一行) 或空資料
+                if (!cat || cat === '特效類別' || cat === '類別' || cat.includes('breakdown')) {
+                    continue; 
+                }
+
+                // 清洗數字與等級
+                let countNum = parseInt(countStr.replace(/\D/g, '')) || 0;
+                let cleanEp = ep.replace('.0', '');
+
                 allShots.push({
-                    ep: (r['集數'] || '').toString().replace('.0','').trim(),
+                    ep: cleanEp,
                     cat: cat,
-                    scene: (r['大場景'] || '').toString().trim(),
-                    time: (r['劇時間'] || '').toString().trim(),
-                    content: (r['內容'] || '').toString().trim(),
-                    vfx: (r['VFX內容'] || '').toString().trim(),
-                    count: parseInt(countStr) || 0,
+                    scene: scene,
+                    time: time,
+                    content: content,
+                    vfx: vfx,
+                    count: countNum,
                     level: level,
-                    remark: (r['備註'] || '').toString().trim(),
+                    remark: remark,
                     star_base: parseStar(level)
                 });
-            });
+            }
+            
             updateUI();
         }
 
@@ -210,6 +247,7 @@
             return { budget: tc, shots: ts, days: td, avg: Math.round(ts?tc/ts:0), pieLabels:pl, pieData:pd, pieColors:pc, starCounts:sc, cats:sorted, note:p==='C' };
         }
 
+        // 圖表渲染邏輯
         function initPieChart() {
             myPieChart = new Chart(document.getElementById('pieChart').getContext('2d'), {
                 type: 'doughnut', data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0 }] },
@@ -217,6 +255,7 @@
             });
         }
 
+        // 分頁與視圖切換
         function switchTab(k, btn) {
             currentTabKey = k; document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.style.background='#2a2a2a'; b.style.borderColor='transparent'; });
             btn.classList.add('active'); btn.style.background = k==='list'?'#9b59b6':k==='actor'?'#e74c3c':'#3498db'; btn.style.borderColor='white';
@@ -236,6 +275,7 @@
             }
         }
 
+        // 篩選與表格渲染
         function renderFilters() {
             const section = document.getElementById('filter-section');
             const getUnique = (key) => [...new Set(allShots.map(s => s[key]))].filter(v => v !== '').sort();
@@ -260,7 +300,7 @@
                 if((!fEp||fEp.includes(s.ep)) && (!fLv||fLv.includes(s.level)) && (!fCt||fCt.includes(s.cat))) {
                     count+=s.count; cost+=s.count*costMap[s.star_base];
                     let bc = s.star_base.includes("5")?"badge-5":s.star_base.includes("4")?"badge-4":s.star_base.includes("3")?"badge-3":s.star_base.includes("2")?"badge-2":"";
-                    tb += `<tr class="shot-row"><td>${s.ep}</td><td>${s.cat}</td><td>${s.scene}</td><td>${s.time}</td><td style="max-width:200px;">${s.content}</td><td style="color:var(--text-color);">${s.vfx}</td><td>${s.count}</td><td><span class="badge ${bc}">${s.level}</span></td><td>${s.remark}</td></tr>`;
+                    tb += `<tr><td>${s.ep}</td><td>${s.cat}</td><td>${s.scene}</td><td>${s.time}</td><td style="max-width:200px;">${s.content}</td><td style="color:var(--text-color);">${s.vfx}</td><td>${s.count}</td><td><span class="badge ${bc}">${s.level}</span></td><td>${s.remark}</td></tr>`;
                 }
             });
             document.getElementById('table-body').innerHTML = tb;
@@ -268,6 +308,7 @@
             document.getElementById('filtered-cost').innerText = '$' + cost.toLocaleString();
         }
 
+        // 初始化載入
         changeVersion('v4');
     </script>
 </body>
