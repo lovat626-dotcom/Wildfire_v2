@@ -5,13 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>夢想特效分析表 - 《野火》</title>
     
-    <!-- ===== 1. 資源載入區 ===== -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-    <!-- 使用 PapaParse 來解析 CSV 網址 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
-    <!-- ===== 2. CSS 視覺設計區 ===== -->
     <style>
         :root {
             --bg-color: #121212; --card-bg: #1e1e1e; --text-color: #e0e0e0;
@@ -62,10 +59,9 @@
     <div id="loadingOverlay" class="loading-overlay"><div class="spinner"></div><div>正在同步雲端最新數據...</div></div>
     
     <div class="container" id="main-content">
-        <!-- ===== 3. HTML 結構區 ===== -->
         <header>
             <div class="title-group">
-                <h2>夢想特效分析表04211230</h2>
+                <h2>夢想特效分析表04211238</h2>
                 <h1>《野火》</h1>
                 <select id="versionDropdown" class="version-select" onchange="changeVersion(this.value)">
                     <option value="v4" selected>🟢 V4 (2026-04-19 最新版)</option>
@@ -133,11 +129,7 @@
         </div>
     </div>
 
-    <!-- ===== 4. JavaScript 核心大腦區 ===== -->
     <script>
-        // -----------------------------------------------------
-        // 【網址管理區】
-        // -----------------------------------------------------
         const URL_V4 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTBKiIj2OWouSA1oAONox7_t4L6Pjzqzl6QAlGoJFvleVAGQvYiBHqpzS9ZRqZ1vw/pub?gid=447035140&single=true&output=csv";
         const URL_V3 = ""; 
         
@@ -146,76 +138,47 @@
         let allShots = [], plansData = {}, currentTabKey = 'heavy';
         Chart.register(ChartDataLabels); let myPieChart = null;
 
-        // 版本切換
         async function changeVersion(versionKey) {
             let targetURL = (versionKey === 'v4') ? URL_V4 : URL_V3;
             if (!targetURL) { alert("此版本的網址尚未填入！"); document.getElementById('versionDropdown').value = 'v4'; return; }
 
             document.getElementById('loadingOverlay').style.display = 'flex';
-            // 重要：採用 header: false 模式，讓我們可以智能抓取真正的欄位所在列
             Papa.parse(targetURL, { 
                 download: true, 
-                header: false, 
+                header: true, // 🚨 CRITICAL: Use header true
                 skipEmptyLines: true,
                 complete: r => { 
-                    processRawDataSmart(r.data); 
+                    processRawDataReal(r.data); 
                     document.getElementById('loadingOverlay').style.display = 'none'; 
                 }, 
                 error: () => { alert("連線失敗！"); document.getElementById('loadingOverlay').style.display = 'none'; } 
             });
         }
 
-        // 🌟 智能標題列辨識邏輯 (V18 最強防呆) 🌟
-        function processRawDataSmart(data) {
-            let headerRowIndex = -1;
-            let colMap = {};
-            
-            // 掃描前10列，找到含有「集數」或「特效類別」的列做為標題列
-            for(let i = 0; i < Math.min(data.length, 10); i++) {
-                let rowStr = data[i].join('').replace(/\s/g, '');
-                if(rowStr.includes('特效類別') || rowStr.includes('集數')) {
-                    headerRowIndex = i;
-                    data[i].forEach((colName, idx) => { colMap[colName.trim()] = idx; });
-                    break;
-                }
-            }
-
-            if(headerRowIndex === -1) {
-                alert("找不到正確的欄位名稱！請確認 Excel 內包含『集數』或『特效類別』等文字。");
-                return;
-            }
-
-            // 安全獲取欄位內容
-            let getValue = (row, colName) => {
-                let idx = colMap[colName];
-                return (idx !== undefined && row[idx]) ? row[idx].toString().trim() : '';
-            };
-
+        // 🚨 CRITICAL FIX: EXACT mapping based on screenshot
+        function processRawDataReal(data) {
             allShots = [];
-            // 從標題列的「下一列」開始抓資料
-            for(let i = headerRowIndex + 1; i < data.length; i++) {
-                let row = data[i];
-                if(row.length === 0 || !row.join('').trim()) continue;
+            data.forEach(r => {
+                let cat = (r['特效類別'] || '').toString().trim();
+                if(!cat) return;
+
+                let countStr = (r['鏡頭數量'] || '').toString().replace(/\D/g, '');
+                let level = (r['鏡頭等級'] || '').toString().trim();
                 
-                let cat = getValue(row, '特效類別');
-                if(!cat) continue; // 如果沒類別就跳過
-
-                let countStr = getValue(row, '鏡頭數量').replace(/\D/g, '');
-                let level = getValue(row, '鏡頭等級');
-
+                // FORCE reading ONLY these keys
                 allShots.push({
-                    ep: getValue(row, '集數').replace('.0', ''),
+                    ep: (r['集數'] || '').toString().replace('.0','').trim(),
                     cat: cat,
-                    scene: getValue(row, '大場景'),
-                    time: getValue(row, '劇時間'),
-                    content: getValue(row, '內容'),
-                    vfx: getValue(row, 'VFX內容'),
+                    scene: (r['大場景'] || '').toString().trim(),
+                    time: (r['劇時間'] || '').toString().trim(),
+                    content: (r['內容'] || '').toString().trim(),
+                    vfx: (r['VFX內容'] || '').toString().trim(),
                     count: parseInt(countStr) || 0,
                     level: level,
-                    remark: getValue(row, '備註'),
+                    remark: (r['備註'] || '').toString().trim(),
                     star_base: parseStar(level)
                 });
-            }
+            });
             updateUI();
         }
 
@@ -297,7 +260,7 @@
                 if((!fEp||fEp.includes(s.ep)) && (!fLv||fLv.includes(s.level)) && (!fCt||fCt.includes(s.cat))) {
                     count+=s.count; cost+=s.count*costMap[s.star_base];
                     let bc = s.star_base.includes("5")?"badge-5":s.star_base.includes("4")?"badge-4":s.star_base.includes("3")?"badge-3":s.star_base.includes("2")?"badge-2":"";
-                    tb += `<tr><td>${s.ep}</td><td>${s.cat}</td><td>${s.scene}</td><td>${s.time}</td><td style="max-width:200px;">${s.content}</td><td style="color:var(--text-color);">${s.vfx}</td><td>${s.count}</td><td><span class="badge ${bc}">${s.level}</span></td><td>${s.remark}</td></tr>`;
+                    tb += `<tr class="shot-row"><td>${s.ep}</td><td>${s.cat}</td><td>${s.scene}</td><td>${s.time}</td><td style="max-width:200px;">${s.content}</td><td style="color:var(--text-color);">${s.vfx}</td><td>${s.count}</td><td><span class="badge ${bc}">${s.level}</span></td><td>${s.remark}</td></tr>`;
                 }
             });
             document.getElementById('table-body').innerHTML = tb;
