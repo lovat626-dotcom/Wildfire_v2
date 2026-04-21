@@ -8,6 +8,7 @@
     <!-- ===== 1. 資源載入區 ===== -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <!-- 使用 PapaParse 來解析 CSV 網址 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
     <!-- ===== 2. CSS 視覺設計區 ===== -->
@@ -64,7 +65,7 @@
         <!-- ===== 3. HTML 結構區 ===== -->
         <header>
             <div class="title-group">
-                <h2>夢想特效分析表04211225</h2>
+                <h2>夢想特效分析表04211230</h2>
                 <h1>《野火》</h1>
                 <select id="versionDropdown" class="version-select" onchange="changeVersion(this.value)">
                     <option value="v4" selected>🟢 V4 (2026-04-19 最新版)</option>
@@ -296,7 +297,7 @@
                 if((!fEp||fEp.includes(s.ep)) && (!fLv||fLv.includes(s.level)) && (!fCt||fCt.includes(s.cat))) {
                     count+=s.count; cost+=s.count*costMap[s.star_base];
                     let bc = s.star_base.includes("5")?"badge-5":s.star_base.includes("4")?"badge-4":s.star_base.includes("3")?"badge-3":s.star_base.includes("2")?"badge-2":"";
-                    tb += `<tr class="shot-row"><td>${s.ep}</td><td>${s.cat}</td><td>${s.scene}</td><td>${s.time}</td><td style="max-width:200px;">${s.content}</td><td style="color:var(--text-color);">${s.vfx}</td><td>${s.count}</td><td><span class="badge ${bc}">${s.level}</span></td><td>${s.remark}</td></tr>`;
+                    tb += `<tr><td>${s.ep}</td><td>${s.cat}</td><td>${s.scene}</td><td>${s.time}</td><td style="max-width:200px;">${s.content}</td><td style="color:var(--text-color);">${s.vfx}</td><td>${s.count}</td><td><span class="badge ${bc}">${s.level}</span></td><td>${s.remark}</td></tr>`;
                 }
             });
             document.getElementById('table-body').innerHTML = tb;
