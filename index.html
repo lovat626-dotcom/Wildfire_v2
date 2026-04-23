@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>《野火》特效製作分析V26</title>
+  <title>《野火》特效製作分析V27</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
@@ -323,28 +323,6 @@
     <strong>操作步驟：</strong>檔案 → 分享 → 發布到網路 → 選擇工作表 → CSV → 發布
   </div>
 
-  <!-- ── 欄位偵測器（開發用，上線後可刪） ── -->
-  <div id="col-inspector" style="display:none; background:#12161f; border:1px solid rgba(167,139,250,0.35); border-radius:10px; padding:18px 20px; margin-bottom:20px; font-size:13px; line-height:1.8;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <strong style="color:#a78bfa; font-size:14px;">🔬 CSV 欄位偵測結果</strong>
-      <button onclick="document.getElementById('col-inspector').style.display='none'"
-        style="background:#2a2a3a; border:1px solid #444; color:#aaa; padding:4px 10px; border-radius:6px; cursor:pointer; font-size:12px;">關閉</button>
-    </div>
-    <div style="margin-bottom:12px; color:#6b7294;">
-      以下是 Google Sheet CSV 實際回傳的 <strong style="color:#fff" id="col-count">0</strong> 個欄位名稱，
-      對照下方「程式碼對應」確認是否正確：
-    </div>
-    <div id="col-tags" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;"></div>
-    <div style="border-top:1px solid rgba(255,255,255,0.08); padding-top:14px;">
-      <div style="color:#6b7294; margin-bottom:8px; font-size:12px;">📌 程式碼目前對應的欄位名稱：</div>
-      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr)); gap:6px;" id="mapping-list"></div>
-    </div>
-    <div id="col-raw-row" style="margin-top:14px; border-top:1px solid rgba(255,255,255,0.08); padding-top:14px; display:none;">
-      <div style="color:#6b7294; margin-bottom:8px; font-size:12px;">📄 第一筆資料列（raw）：</div>
-      <pre id="col-raw" style="color:#2fe0a0; font-size:11px; white-space:pre-wrap; overflow-x:auto; background:#0a0c14; padding:10px; border-radius:6px;"></pre>
-    </div>
-  </div>
-
   <!-- ── 儀表板 ── -->
   <div id="dashboard-view">
     <div id="actor-note" class="actor-note">
@@ -553,60 +531,10 @@ function colGet(row, key) {
 }
 
 /* ══════════════════════════════════════════
-   2-B. 欄位偵測器顯示
-══════════════════════════════════════════ */
-function showInspector(rows) {
-  if (!rows || rows.length === 0) return;
-
-  const allKeys = Object.keys(rows[0]);
-  document.getElementById('col-count').textContent = allKeys.length;
-
-  // 顯示所有欄位 tag
-  document.getElementById('col-tags').innerHTML = allKeys.map(k => {
-    const empty = !rows.slice(0, 5).some(r => r[k] && r[k].toString().trim());
-    return `<span style="
-      padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600;
-      background:${empty ? '#2a2a3a' : 'rgba(79,142,247,0.15)'};
-      border:1px solid ${empty ? '#444' : 'rgba(79,142,247,0.4)'};
-      color:${empty ? '#666' : '#4f8ef7'};
-    " title="空值欄位">${esc(k)}${empty ? ' ⚠️' : ''}</span>`;
-  }).join('');
-
-  // 顯示程式碼對應清單
-  document.getElementById('mapping-list').innerHTML = Object.entries(COL_MAP).map(([field, candidates]) => {
-    const found = candidates.find(c => {
-      const norm = c.trim().replace(/\s+/g, '').toLowerCase();
-      return allKeys.some(k => k.trim().replace(/\s+/g, '').toLowerCase() === norm);
-    });
-    return `<div style="font-size:12px; padding:5px 10px; background:#0f1117; border-radius:6px; border:1px solid ${found ? 'rgba(47,224,160,0.3)' : 'rgba(242,95,92,0.3)'}">
-      <span style="color:${found ? '#2fe0a0' : '#f25f5c'}">${found ? '✓' : '✗'}</span>
-      <span style="color:#aaa"> ${field}</span>
-      <span style="color:#555"> → </span>
-      <span style="color:${found ? '#fff' : '#f25f5c'}">${found || '❌ 找不到對應欄位'}</span>
-    </div>`;
-  }).join('');
-
-  // 顯示第一筆 raw 資料（含 index）
-  if (rows[1]) {
-    document.getElementById('col-raw-row').style.display = '';
-    const indexed = {};
-    Object.entries(rows[1]).forEach(([k, v], i) => {
-      indexed[`[${i}] "${k}"`] = v;
-    });
-    document.getElementById('col-raw').textContent = JSON.stringify(indexed, null, 2);
-  }
-
-  document.getElementById('col-inspector').style.display = '';
-}
-
-/* ══════════════════════════════════════════
-   2-C. 資料清洗主函式
+   2-B. 資料清洗主函式
 ══════════════════════════════════════════ */
 function processData(rows) {
   allShots = [];
-
-  // 顯示偵測器（開發時用，確認欄位後可在 showInspector 呼叫處刪除）
-  showInspector(rows);
 
   rows.forEach(row => {
     const cat = colGet(row, 'cat');
